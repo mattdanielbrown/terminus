@@ -1,19 +1,29 @@
 import { app, ipcMain, Menu, Tray, shell, screen, globalShortcut, MenuItemConstructorOptions } from 'electron'
 import * as promiseIpc from 'electron-promise-ipc'
 import * as remote from '@electron/remote/main'
+import * as path from 'path'
+import * as fs from 'fs'
 
 import { loadConfig } from './config'
 import { Window, WindowOptions } from './window'
 import { pluginManager } from './pluginManager'
 import { PTYManager } from './pty'
 
+/* eslint-disable block-scoped-var */
+
+try {
+    var wnr = require('windows-native-registry') // eslint-disable-line @typescript-eslint/no-var-requires, no-var
+} catch (_) { }
+
 export class Application {
     private tray?: Tray
     private ptyManager = new PTYManager()
     private windows: Window[] = []
+    userPluginsPath: string
 
     constructor () {
         remote.initialize()
+        this.useBuiltinGraphics()
         this.ptyManager.init(this)
 
         ipcMain.on('app:config-change', (_event, config) => {
@@ -29,12 +39,12 @@ export class Application {
             }
         })
 
-        ;(promiseIpc as any).on('plugin-manager:install', (path, name, version) => {
-            return pluginManager.install(path, name, version)
+        ;(promiseIpc as any).on('plugin-manager:install', (name, version) => {
+            return pluginManager.install(this.userPluginsPath, name, version)
         })
 
-        ;(promiseIpc as any).on('plugin-manager:uninstall', (path, name) => {
-            return pluginManager.uninstall(path, name)
+        ;(promiseIpc as any).on('plugin-manager:uninstall', (name) => {
+            return pluginManager.uninstall(this.userPluginsPath, name)
         })
 
         const configData = loadConfig()
@@ -44,6 +54,15 @@ export class Application {
                 app.commandLine.appendSwitch('enable-transparent-visuals')
                 app.disableHardwareAcceleration()
             }
+        }
+
+        this.userPluginsPath = path.join(
+            app.getPath('userData'),
+            'plugins',
+        )
+
+        if (!fs.existsSync(this.userPluginsPath)) {
+            fs.mkdirSync(this.userPluginsPath)
         }
 
         app.commandLine.appendSwitch('disable-http-cache')
@@ -63,7 +82,7 @@ export class Application {
     }
 
     async newWindow (options?: WindowOptions): Promise<Window> {
-        const window = new Window(options)
+        const window = new Window(this, options)
         this.windows.push(window)
         window.visible$.subscribe(visible => {
             if (visible) {
@@ -135,7 +154,7 @@ export class Application {
             this.tray.setContextMenu(contextMenu)
         }
 
-        this.tray.setToolTip(`Terminus ${app.getVersion()}`)
+        this.tray.setToolTip(`Tabby ${app.getVersion()}`)
     }
 
     disableTray (): void {
@@ -161,12 +180,22 @@ export class Application {
         this.windows[this.windows.length - 1].passCliArguments(argv, cwd, true)
     }
 
+    private useBuiltinGraphics (): void {
+        if (process.platform === 'win32') {
+            const keyPath = 'SOFTWARE\\Microsoft\\DirectX\\UserGpuPreferences'
+            const valueName = app.getPath('exe')
+            if (!wnr.getRegistryValue(wnr.HK.CU, keyPath, valueName)) {
+                wnr.setRegistryValue(wnr.HK.CU, keyPath, valueName, wnr.REG.SZ, 'GpuPreference=1;')
+            }
+        }
+    }
+
     private setupMenu () {
         const template: MenuItemConstructorOptions[] = [
             {
                 label: 'Application',
                 submenu: [
-                    { role: 'about', label: 'About Terminus' },
+                    { role: 'about', label: 'About Tabby' },
                     { type: 'separator' },
                     {
                         label: 'Preferences',
@@ -232,7 +261,7 @@ export class Application {
                     {
                         label: 'Website',
                         click () {
-                            shell.openExternal('https://eugeny.github.io/terminus')
+                            shell.openExternal('https://eugeny.github.io/tabby')
                         },
                     },
                 ],

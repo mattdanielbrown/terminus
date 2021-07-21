@@ -1,6 +1,6 @@
 ---
-appId: org.terminus
-productName: Terminus
+appId: org.tabby
+productName: Tabby
 compression: normal
 npmRebuild: false
 afterSign: "./build/mac/afterSignHook.js"
@@ -27,29 +27,30 @@ files:
 - '!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}'
 - '!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}'
 - '!**/{appveyor.yml,.travis.yml,circle.yml}'
-- '!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json'
+- '!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}'
+- '!**/deps/cpu_features/build'
 extraResources:
 - builtin-plugins
 - extras
 asarUnpack:
-- dist/*.map
+- 'dist/*.map'
 publish:
 - provider: github
 
 win:
   icon: "./build/windows/icon.ico"
-  artifactName: terminus-${version}-portable.${ext}
+  artifactName: tabby-${version}-portable.${ext}
   rfc3161TimeStampServer: http://sha256timestamp.ws.symantec.com/sha256/timestamp
 nsis:
   oneClick: false
-  artifactName: terminus-${version}-setup.${ext}
+  artifactName: tabby-${version}-setup.${ext}
   installerIcon: "./build/windows/icon.ico"
   allowToChangeInstallationDirectory: true
 
 mac:
   category: public.app-category.video
   icon: "./build/mac/icon.icns"
-  artifactName: terminus-${version}-macos-${env.ARCH}.${ext}
+  artifactName: tabby-${version}-macos-${env.ARCH}.${ext}
   hardenedRuntime: true
   entitlements: "./build/mac/entitlements.plist"
   entitlementsInherit: "./build/mac/entitlements.plist"
@@ -67,11 +68,11 @@ mac:
 linux:
   category: Utility
   icon: "./build/icons"
-  artifactName: terminus-${version}-linux.${ext}
+  artifactName: tabby-${version}-linux.${ext}
   executableArgs:
   - "--no-sandbox"
   desktop:
-    StartupWMClass: terminus
+    StartupWMClass: tabby
 snap:
   plugs:
   - default
@@ -88,6 +89,9 @@ deb:
   - libxtst6
   - libnss3
   afterInstall: build/linux/after-install.tpl
+  fpm:
+  - '--replaces'
+  - 'terminus-terminal'
 pacman:
   depends:
   - gnome-keyring
@@ -98,3 +102,5 @@ rpm:
   fpm:
   - '--rpm-rpmbuild-define'
   - '_build_id_links none'
+  - '--replaces'
+  - 'terminus-terminal'

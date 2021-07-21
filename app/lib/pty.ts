@@ -1,4 +1,5 @@
-import * as nodePTY from '@terminus-term/node-pty'
+import * as nodePTY from 'node-pty'
+import { StringDecoder } from './stringDecoder'
 import { v4 as uuidv4 } from 'uuid'
 import { ipcMain } from 'electron'
 import { Application } from './app'
@@ -9,6 +10,7 @@ class PTYDataQueue {
     private maxChunk = 1024
     private maxDelta = 1024 * 50
     private flowPaused = false
+    private decoder = new StringDecoder()
 
     constructor (private pty: nodePTY.IPty, private onData: (data: Buffer) => void) { }
 
@@ -49,13 +51,17 @@ class PTYDataQueue {
                 this.buffers.unshift(toSend.slice(this.maxChunk))
                 toSend = toSend.slice(0, this.maxChunk)
             }
-            this.onData(toSend)
+            this.emitData(toSend)
             this.delta += toSend.length
 
             if (this.buffers.length) {
                 setImmediate(() => this.maybeEmit())
             }
         }
+    }
+
+    private emitData (data: Buffer) {
+        this.onData(this.decoder.write(data))
     }
 
     private pause () {
@@ -81,7 +87,7 @@ export class PTY {
         }
 
         this.outputQueue = new PTYDataQueue(this.pty, data => {
-            setImmediate(() => this.emit('data-buffered', data))
+            setImmediate(() => this.emit('data', data))
         })
 
         this.pty.on('data', data => this.outputQueue.push(Buffer.from(data)))
@@ -99,7 +105,7 @@ export class PTY {
 
     write (buffer: Buffer): void {
         if ((this.pty as any)._writable) {
-            this.pty.write(buffer.toString())
+            this.pty.write(buffer as any)
         }
     }
 
@@ -120,7 +126,6 @@ export class PTYManager {
     private ptys: Record<string, PTY|undefined> = {}
 
     init (app: Application): void {
-        //require('./bufferizedPTY')(nodePTY) // eslint-disable-line @typescript-eslint/no-var-requires
         ipcMain.on('pty:spawn', (event, ...options) => {
             const id = uuidv4().toString()
             event.returnValue = id

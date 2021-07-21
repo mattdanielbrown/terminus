@@ -1,7 +1,6 @@
 import * as glasstron from 'glasstron'
 
-import { Subject, Observable } from 'rxjs'
-import { debounceTime } from 'rxjs/operators'
+import { Subject, Observable, debounceTime } from 'rxjs'
 import { BrowserWindow, app, ipcMain, Rectangle, Menu, screen, BrowserWindowConstructorOptions } from 'electron'
 import ElectronConfig = require('electron-config')
 import * as os from 'os'
@@ -9,6 +8,7 @@ import * as path from 'path'
 import macOSRelease from 'macos-release'
 import * as compareVersions from 'compare-versions'
 
+import type { Application } from './app'
 import { parseArgs } from './cli'
 import { loadConfig } from './config'
 
@@ -43,7 +43,7 @@ export class Window {
     get visible$ (): Observable<boolean> { return this.visible }
     get closed$ (): Observable<void> { return this.closed }
 
-    constructor (options?: WindowOptions) {
+    constructor (private application: Application, options?: WindowOptions) {
         this.configStore = loadConfig()
 
         options = options ?? {}
@@ -55,7 +55,7 @@ export class Window {
         const bwOptions: BrowserWindowConstructorOptions = {
             width: 800,
             height: 600,
-            title: 'Terminus',
+            title: 'Tabby',
             minWidth: 400,
             minHeight: 300,
             webPreferences: {
@@ -117,12 +117,12 @@ export class Window {
         })
 
         this.window.on('blur', () => {
-            if (this.configStore.appearance.dock !== 'off' && this.configStore.appearance?.dockHideOnBlur) {
+            if ((this.configStore.appearance?.dock ?? 'off') !== 'off' && this.configStore.appearance?.dockHideOnBlur) {
                 this.hide()
             }
         })
 
-        this.window.loadURL(`file://${app.getAppPath()}/dist/index.html?${this.window.id}`, { extraHeaders: 'pragma: no-cache\n' })
+        this.window.loadURL(`file://${app.getAppPath()}/dist/index.html`, { extraHeaders: 'pragma: no-cache\n' })
 
         this.window.webContents.setVisualZoomLevelLimits(1, 1)
         this.window.webContents.setZoomFactor(1)
@@ -290,36 +290,17 @@ export class Window {
             this.send('host:window-focused')
         })
 
-        ipcMain.on('window-focus', event => {
+        ipcMain.on('ready', event => {
             if (!this.window || event.sender !== this.window.webContents) {
                 return
             }
-            this.window.focus()
-        })
-
-        ipcMain.on('window-maximize', event => {
-            if (!this.window || event.sender !== this.window.webContents) {
-                return
-            }
-            this.window.maximize()
-        })
-
-        ipcMain.on('window-unmaximize', event => {
-            if (!this.window || event.sender !== this.window.webContents) {
-                return
-            }
-            this.window.unmaximize()
-        })
-
-        ipcMain.on('window-toggle-maximize', event => {
-            if (!this.window || event.sender !== this.window.webContents) {
-                return
-            }
-            if (this.window.isMaximized()) {
-                this.window.unmaximize()
-            } else {
-                this.window.maximize()
-            }
+            this.window.webContents.send('start', {
+                config: this.configStore,
+                executable: app.getPath('exe'),
+                windowID: this.window.id,
+                isFirstWindow: this.window.id === 1,
+                userPluginsPath: this.application.userPluginsPath,
+            })
         })
 
         ipcMain.on('window-minimize', event => {
@@ -382,7 +363,7 @@ export class Window {
             this.disableVibrancyWhileDragging = value
         })
 
-        let moveEndedTimeout: number|null = null
+        let moveEndedTimeout: any = null
         const onBoundsChange = () => {
             if (!this.lastVibrancy?.enabled || !this.disableVibrancyWhileDragging) {
                 return

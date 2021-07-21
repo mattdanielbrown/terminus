@@ -16,6 +16,7 @@ export function getRootModule (plugins: any[]) {
             extendedTimeOut: 1000,
         }),
     ]
+
     const bootstrap = [
         ...plugins.filter(x => x.bootstrap).map(x => x.bootstrap),
     ]
