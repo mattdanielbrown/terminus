@@ -11,10 +11,10 @@
     enabled "2.0.x"
     kuler "^2.0.0"
 
-"@electron/remote@1.1.0":
-  version "1.1.0"
-  resolved "https://registry.yarnpkg.com/@electron/remote/-/remote-1.1.0.tgz#167d119c7c03c7778b556fdc4f1f38a44b23f1c2"
-  integrity sha512-yr8gZTkIgJYKbFqExI4QZqMSjn1kL/us9Dl46+TH1EZdhgRtsJ6HDfdsIxu0QEc6Hv+DMAXs69rgquH+8FDk4w==
+"@electron/remote@2.0.8":
+  version "2.0.8"
+  resolved "https://registry.yarnpkg.com/@electron/remote/-/remote-2.0.8.tgz#85ff321f0490222993207106e2f720273bb1a5c3"
+  integrity sha512-P10v3+iFCIvEPeYzTWWGwwHmqWnjoh8RYnbtZAb3RlQefy4guagzIwcWtfftABIfm6JJTNQf4WPSKWZOpLmHXw==
 
 "@types/js-yaml@^4.0.0":
   version "4.0.1"
