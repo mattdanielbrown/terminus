@@ -12,7 +12,7 @@
         "path-browserify": "^1.0.1",
         "readline-browserify": "^0.0.4",
         "stream-browserify": "^3.0.0",
-        "url": "^0.11.0"
+        "url": "^0.11.4"
     },
     "resolutions": {
         "**/util": "^0.12.0"
